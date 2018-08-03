@@ -1,0 +1,610 @@
+diff --git a/hr-tecs/mruby_lib/BTserial.rb b/hr-tecs/mruby_lib/BTserial.rb
+new file mode 100644
+index 0000000..3ae0342
+--- /dev/null
++++ b/hr-tecs/mruby_lib/BTserial.rb
+@@ -0,0 +1,21 @@
++unless $initialized
++  module EV3RT_TECS
++    class BTserial < TECS::TsBTserial
++
++      private 
++      def initialize
++        super "BridgeBTserial"
++      end
++      @@instance = self.new
++      public
++      def self.read_byte()
++        return @@instance.bread()
++      end
++      def self.send_byte(str)
++	buf=TECS::CharPointer.new( str.length + 1 )
++	buf.from_s str
++	@@instance.bsend(buf)
++      end
++    end
++  end
++end # unless $initialized
+diff --git a/hr-tecs/tecs_lib/common/Bridge_VM1.cdl b/hr-tecs/tecs_lib/common/Bridge_VM1.cdl
+index 27ba0dc..5d9416d 100755
+--- a/hr-tecs/tecs_lib/common/Bridge_VM1.cdl
++++ b/hr-tecs/tecs_lib/common/Bridge_VM1.cdl
+@@ -94,6 +94,10 @@ region rDomainEV3 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
+ 
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
++
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+ 	};
+diff --git a/hr-tecs/tecs_lib/common/Bridge_VM2.cdl b/hr-tecs/tecs_lib/common/Bridge_VM2.cdl
+index b16666a..4267c3c 100755
+--- a/hr-tecs/tecs_lib/common/Bridge_VM2.cdl
++++ b/hr-tecs/tecs_lib/common/Bridge_VM2.cdl
+@@ -94,6 +94,10 @@ region rDomainEV3 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
+ 
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
++
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+ 	};
+diff --git a/hr-tecs/tecs_lib/common/Bridge_VM3.cdl b/hr-tecs/tecs_lib/common/Bridge_VM3.cdl
+index 4b40957..744cd5f 100755
+--- a/hr-tecs/tecs_lib/common/Bridge_VM3.cdl
++++ b/hr-tecs/tecs_lib/common/Bridge_VM3.cdl
+@@ -93,6 +93,10 @@ region rDomainEV3 {
+ 	cell nMruby::tsTouchSensor BridgeTouchSensor4 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
++	// BTserial ブリッジセル
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
+ 	// Balancer ブリッジセル
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+diff --git a/hr-tecs/tecs_lib/common/Bridge_VM4.cdl b/hr-tecs/tecs_lib/common/Bridge_VM4.cdl
+index 9568556..a063642 100755
+--- a/hr-tecs/tecs_lib/common/Bridge_VM4.cdl
++++ b/hr-tecs/tecs_lib/common/Bridge_VM4.cdl
+@@ -93,6 +93,10 @@ region rDomainEV3 {
+ 	cell nMruby::tsTouchSensor BridgeTouchSensor4 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
++	// BTserial ブリッジセル
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
+ 	// Balancer ブリッジセル
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+diff --git a/hr-tecs/tecs_lib/common/EV3_mruby_common.cdl b/hr-tecs/tecs_lib/common/EV3_mruby_common.cdl
+index c0d9803..c7bb088 100755
+--- a/hr-tecs/tecs_lib/common/EV3_mruby_common.cdl
++++ b/hr-tecs/tecs_lib/common/EV3_mruby_common.cdl
+@@ -22,6 +22,7 @@ import(<tBattery.cdl>);
+ import(<tSpeaker.cdl>);
+ 
+ import(<tEV3Platform.cdl>);
++import(<tBTserial.cdl>);
+ import(<tBalancer.cdl>);
+ 
+ import(<tSharedMemory.cdl>);
+@@ -46,6 +47,7 @@ generate( MrubyBridgePlugin, sGyroSensor, "" );
+ generate( MrubyBridgePlugin, sColorSensor, "" );
+ generate( MrubyBridgePlugin, sTouchSensor, "" );
+ 
++generate( MrubyBridgePlugin, sBTserial, "" );
+ generate( MrubyBridgePlugin, sBalancer, "" );
+ 
+ generate( MrubyBridgePlugin, sSharedMemory, "" );
+@@ -137,6 +139,9 @@ region rDomainEV3 {
+ 		port = C_EXP("EV3_PORT_4");
+ 	};
+ 
++	cell tBTserial BTserial {
++	};
++
+ 	cell tBalancer Balancer {
+ 	};
+ 
+diff --git a/hr-tecs/tecs_lib/common/EV3_mruby_common_bigtire.cdl b/hr-tecs/tecs_lib/common/EV3_mruby_common_bigtire.cdl
+index 00cac6b..2230844 100755
+--- a/hr-tecs/tecs_lib/common/EV3_mruby_common_bigtire.cdl
++++ b/hr-tecs/tecs_lib/common/EV3_mruby_common_bigtire.cdl
+@@ -22,6 +22,7 @@ import(<tBattery.cdl>);
+ import(<tSpeaker.cdl>);
+ 
+ import(<tEV3Platform.cdl>);
++import(<tBTserial.cdl>);
+ import(<tBalancer_bigtire.cdl>);
+ 
+ import(<tSharedMemory.cdl>);
+@@ -46,6 +47,7 @@ generate( MrubyBridgePlugin, sGyroSensor, "" );
+ generate( MrubyBridgePlugin, sColorSensor, "" );
+ generate( MrubyBridgePlugin, sTouchSensor, "" );
+ 
++generate( MrubyBridgePlugin, sBTserial, "" );
+ generate( MrubyBridgePlugin, sBalancer, "" );
+ 
+ generate( MrubyBridgePlugin, sSharedMemory, "" );
+@@ -137,6 +139,9 @@ region rDomainEV3 {
+ 		port = C_EXP("EV3_PORT_4");
+ 	};
+ 
++	cell tBTserial BTserial {
++	};
++
+ 	cell tBalancer Balancer {
+ 	};
+ 
+diff --git a/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common.cdl b/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common.cdl
+index 49d853a..9c704b5 100755
+--- a/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common.cdl
++++ b/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common.cdl
+@@ -17,6 +17,7 @@ import(<tBattery.cdl>);
+ import(<tSpeaker.cdl>);
+ 
+ import(<tEV3Platform.cdl>);
++import(<tBTserial.cdl>);
+ import(<tBalancer.cdl>);
+ 
+ import(<tSharedMemory.cdl>);
+@@ -39,6 +40,7 @@ generate( MrubyBridgePlugin, sGyroSensor, "" );
+ generate( MrubyBridgePlugin, sColorSensor, "" );
+ generate( MrubyBridgePlugin, sTouchSensor, "" );
+ 
++generate( MrubyBridgePlugin, sBTserial, "" );
+ generate( MrubyBridgePlugin, sBalancer, "" );
+ 
+ generate( MrubyBridgePlugin, sSharedMemory, "" );
+@@ -138,6 +140,10 @@ region rDomainEV3 {
+ 	cell nMruby::tsTouchSensor BridgeTouchSensor4 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
++	// BTserial �u���b�W�Z��
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
+ 	// Balancer �u���b�W�Z��
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+@@ -231,6 +237,8 @@ region rDomainEV3 {
+ 	cell tTouchSensor TouchSensor4 {
+ 		port = C_EXP("EV3_PORT_4");
+ 	};
++	cell tBTserial BTserial {
++	};
+ 	cell tBalancer Balancer {
+ 	};
+ 	cell tSharedMemory SharedMemory {
+diff --git a/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common_bigtire.cdl b/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common_bigtire.cdl
+index 5334782..25b1cc1 100755
+--- a/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common_bigtire.cdl
++++ b/hr-tecs/tecs_lib/mindstorms_ev3/EV3_common_bigtire.cdl
+@@ -17,6 +17,7 @@ import(<tBattery.cdl>);
+ import(<tSpeaker.cdl>);
+ 
+ import(<tEV3Platform.cdl>);
++import(<tBTserial.cdl>);
+ import(<tBalancer_bigtire.cdl>);
+ 
+ import(<tSharedMemory.cdl>);
+@@ -39,6 +40,7 @@ generate( MrubyBridgePlugin, sGyroSensor, "" );
+ generate( MrubyBridgePlugin, sColorSensor, "" );
+ generate( MrubyBridgePlugin, sTouchSensor, "" );
+ 
++generate( MrubyBridgePlugin, sBTserial, "" );
+ generate( MrubyBridgePlugin, sBalancer, "" );
+ 
+ generate( MrubyBridgePlugin, sSharedMemory, "" );
+@@ -138,6 +140,10 @@ region rDomainEV3 {
+ 	cell nMruby::tsTouchSensor BridgeTouchSensor4 {
+ 		cTECS = TouchSensor4.eTouchSensor;
+ 	};
++	// BTserial �u���b�W�Z��
++	cell nMruby::tsBTserial BridgeBTserial {
++		cTECS = BTserial.eBTserial;
++	};
+ 	// Balancer �u���b�W�Z��
+ 	cell nMruby::tsBalancer BridgeBalancer {
+ 		cTECS = Balancer.eBalancer;
+@@ -231,6 +237,8 @@ region rDomainEV3 {
+ 	cell tTouchSensor TouchSensor4 {
+ 		port = C_EXP("EV3_PORT_4");
+ 	};
++	cell tBTserial BTserial {
++	};
+ 	cell tBalancer Balancer {
+ 	};
+ 	cell tSharedMemory SharedMemory {
+diff --git a/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.c b/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.c
+new file mode 100644
+index 0000000..942c426
+--- /dev/null
++++ b/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.c
+@@ -0,0 +1,32 @@
++#include <t_syslog.h>
++#include "tBTserial_tecsgen.h"
++#include "syssvc/serial.h"
++
++int
++eBTserial_bread()
++{
++	uint8_t buf;
++
++	ER_UINT erlen = serial_rea_dat(SIO_PORT_BT, (char*)&buf, sizeof(buf));
++	assert(erlen > 0);
++
++	if(erlen == sizeof(buf))
++		return buf;
++
++	return 0;
++}
++
++int
++eBTserial_bsend(const char* str)
++{
++	int len = 1;
++
++	ER_UINT erlen = serial_wri_dat(SIO_PORT_BT, str, len);
++	assert(erlen > 0);
++
++	if(erlen==len) {
++		return 0;
++	}
++
++	return -1;
++}
+diff --git a/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.cdl b/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.cdl
+new file mode 100644
+index 0000000..3bb3108
+--- /dev/null
++++ b/hr-tecs/tecs_lib/mindstorms_ev3/tBTserial.cdl
+@@ -0,0 +1,9 @@
++signature sBTserial {
++	int bread(void);
++	int bsend([in]const char *str);
++};
++
++[singleton]
++celltype tBTserial{
++	entry sBTserial eBTserial;
++};
+diff --git a/hr-tecs/workspace/bluetooth/VM1.cdl b/hr-tecs/workspace/bluetooth/VM1.cdl
+index a73be33..fd7642b 100755
+--- a/hr-tecs/workspace/bluetooth/VM1.cdl
++++ b/hr-tecs/workspace/bluetooth/VM1.cdl
+@@ -36,6 +36,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb ";
+         cInit = VM_TECSInitializer.eInitialize;     /* TECSイニシャライザ */
+diff --git a/hr-tecs/workspace/bluetooth/VM2.cdl b/hr-tecs/workspace/bluetooth/VM2.cdl
+index 63858b4..2f93aa7 100755
+--- a/hr-tecs/workspace/bluetooth/VM2.cdl
++++ b/hr-tecs/workspace/bluetooth/VM2.cdl
+@@ -36,6 +36,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+@@ -82,6 +83,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+diff --git a/hr-tecs/workspace/bluetooth/VM2_bigtire.cdl b/hr-tecs/workspace/bluetooth/VM2_bigtire.cdl
+index aef733d..58a1887 100755
+--- a/hr-tecs/workspace/bluetooth/VM2_bigtire.cdl
++++ b/hr-tecs/workspace/bluetooth/VM2_bigtire.cdl
+@@ -36,6 +36,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+@@ -82,6 +83,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+diff --git a/hr-tecs/workspace/mruby_app/bt_test.rb b/hr-tecs/workspace/mruby_app/bt_test.rb
+new file mode 100644
+index 0000000..b9963f0
+--- /dev/null
++++ b/hr-tecs/workspace/mruby_app/bt_test.rb
+@@ -0,0 +1,69 @@
++# coding: cp932
++include EV3RT_TECS
++
++# タッチセンサポート番号の設定
++TOUCH_SENSOR = Parameter.touch_sensor_port
++
++#mainプログラム
++begin
++    # 各オブジェクトを生成・初期化する
++    LCD.puts "initialize touch sensor"
++    @touch = TouchSensor.new(TOUCH_SENSOR)
++    # スタート待機
++    LCD.puts "Ready to start"
++    # タッチセンサーが押されるとBTシリアルの送受信開始
++    while true
++        break if @touch.pressed?
++        RTOS.delay(10)
++    end
++    # 以下4行　改行及びCRを送信
++    str = "\n"
++    BTserial.send_byte(str)
++    str = "\r"
++    BTserial.send_byte(str)
++    while true
++        # 1バイト（1文字）受信
++        code = BTserial.read_byte()
++        # 受信した1バイト（int型）をstringに変換したもの（文字列）を送信（デバッグ用）
++        str = code.to_s
++        len = str.length
++        i = 0
++        while i < len do
++          BTserial.send_byte(str[i])
++          i = i + 1
++        end
++	# 以下4行　改行及びCRを送信
++        str = "\n"
++        BTserial.send_byte(str)
++        str = "\r"
++        BTserial.send_byte(str)
++        # LCDに受信した1バイトの数値(int)を表示
++        LCD.puts "receive"
++        LCD.puts code
++        RTOS.delay(10)
++        # q を受信しているとbreak
++        if code == 113
++          break
++        end
++    end
++    # 改行CR quit 改行CR を送信
++    str = "\n"
++    BTserial.send_byte(str)
++    str = "\r"
++    BTserial.send_byte(str)
++    str = "q"
++    BTserial.send_byte(str)
++    str = "u"
++    BTserial.send_byte(str)
++    str = "i"
++    BTserial.send_byte(str)
++    str = "t"
++    BTserial.send_byte(str)
++    str = "\n"
++    BTserial.send_byte(str)
++    str = "\r"
++    BTserial.send_byte(str)
++    LCD.puts "quit"
++rescue => e
++  LCD.error_puts e
++end
+diff --git a/hr-tecs/workspace/sample1/tEV3Sample.cdl b/hr-tecs/workspace/sample1/tEV3Sample.cdl
+index d3b7a6f..d287a6a 100755
+--- a/hr-tecs/workspace/sample1/tEV3Sample.cdl
++++ b/hr-tecs/workspace/sample1/tEV3Sample.cdl
+@@ -29,6 +29,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 				"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -61,6 +62,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 		        "sharedmemory_def.rb "
+@@ -95,6 +97,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -137,6 +140,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -180,6 +184,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 				"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -224,6 +229,7 @@ generate( MrubyBridgePlugin, tSemaphore, "" );
+ 
+ /*** Bridges already written manually
+ generate( MrubyBridgePlugin, tKernel, "" );
++generate( MrubyBridgePlugin, tBTserial, "" );
+ generate( MrubyBridgePlugin, tBalancer, "" );
+ generate( MrubyBridgePlugin, tEV3Platform, "" );
+ generate( MrubyBridgePlugin, tLED, "" );
+diff --git a/hr-tecs/workspace/sample1/tEV3Sample_bigtire.cdl b/hr-tecs/workspace/sample1/tEV3Sample_bigtire.cdl
+index d3b7a6f..d287a6a 100755
+--- a/hr-tecs/workspace/sample1/tEV3Sample_bigtire.cdl
++++ b/hr-tecs/workspace/sample1/tEV3Sample_bigtire.cdl
+@@ -29,6 +29,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 				"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -61,6 +62,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 		        "sharedmemory_def.rb "
+@@ -95,6 +97,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -137,6 +140,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+         		"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -180,6 +184,7 @@ region rDomainEV3 {
+ 				"$(MRUBY_LIB_DIR)/LED.rb "
+ 				"$(MRUBY_LIB_DIR)/LCD.rb "
+ 				"$(MRUBY_LIB_DIR)/Battery.rb "
++				"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 				"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 				"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+         		"sharedmemory_def.rb "
+@@ -224,6 +229,7 @@ generate( MrubyBridgePlugin, tSemaphore, "" );
+ 
+ /*** Bridges already written manually
+ generate( MrubyBridgePlugin, tKernel, "" );
++generate( MrubyBridgePlugin, tBTserial, "" );
+ generate( MrubyBridgePlugin, tBalancer, "" );
+ generate( MrubyBridgePlugin, tEV3Platform, "" );
+ generate( MrubyBridgePlugin, tLED, "" );
+diff --git a/hr-tecs/workspace/sd/Makefile b/hr-tecs/workspace/sd/Makefile
+index a58cf70..e41fe3a 100755
+--- a/hr-tecs/workspace/sd/Makefile
++++ b/hr-tecs/workspace/sd/Makefile
+@@ -54,7 +54,7 @@ endef
+ all:
+ 
+ # SDのドライブ文字を指定
+-SD_DIR = /cygdrive/e/
++SD_DIR = /PATH_TO_SD_DIR/
+ 
+ #
+ #  ターゲット略称の定義
+@@ -70,7 +70,8 @@ MRUBY_DIR = ../mruby_app
+ 
+ #  mrubyのアプリケーションファイル名
+ # APP_NAME = battery_sample.rb
+- APP_NAME = button_sample.rb
++# APP_NAME = button_sample.rb
++APP_NAME = bt_test.rb
+ # APP_NAME = color_sample.rb
+ # APP_NAME = color_sample2.rb
+ # APP_NAME = color_sample3.rb
+@@ -170,9 +171,9 @@ CFG = $(SRCDIR)/cfg/cfg/cfg
+ 
+ #mkimageの設定
+ #/usr/bin/などパスが通っている場合
+-#MKIMAGE = mkimage
++MKIMAGE = mkimage
+ #WINDOWSの場合
+-MKIMAGE = $(SRCDIR)/../bin/mkimage.exe
++#MKIMAGE = $(SRCDIR)/../bin/mkimage.exe
+ 
+ 
+ #
+diff --git a/hr-tecs/workspace/sd/VM1.cdl b/hr-tecs/workspace/sd/VM1.cdl
+index 18bf49c..32a5ee9 100755
+--- a/hr-tecs/workspace/sd/VM1.cdl
++++ b/hr-tecs/workspace/sd/VM1.cdl
+@@ -16,6 +16,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+diff --git a/hr-tecs/workspace/sd/VM1_bigtire.cdl b/hr-tecs/workspace/sd/VM1_bigtire.cdl
+index 275261c..4e17d19 100755
+--- a/hr-tecs/workspace/sd/VM1_bigtire.cdl
++++ b/hr-tecs/workspace/sd/VM1_bigtire.cdl
+@@ -16,6 +16,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+diff --git a/hr-tecs/workspace/sd/VM2.cdl b/hr-tecs/workspace/sd/VM2.cdl
+index 8e81305..e6629c9 100755
+--- a/hr-tecs/workspace/sd/VM2.cdl
++++ b/hr-tecs/workspace/sd/VM2.cdl
+@@ -16,6 +16,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+@@ -46,6 +47,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_RB2)";
+diff --git a/hr-tecs/workspace/sd/VM2_bigtire.cdl b/hr-tecs/workspace/sd/VM2_bigtire.cdl
+index fdfccae..503c5b2 100755
+--- a/hr-tecs/workspace/sd/VM2_bigtire.cdl
++++ b/hr-tecs/workspace/sd/VM2_bigtire.cdl
+@@ -16,6 +16,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_PARAM_RB) "
+@@ -46,6 +47,7 @@ region rDomainEV3 {
+ 			"$(MRUBY_LIB_DIR)/LED.rb "
+ 			"$(MRUBY_LIB_DIR)/LCD.rb "
+ 			"$(MRUBY_LIB_DIR)/Battery.rb "
++			"$(MRUBY_LIB_DIR)/BTserial.rb "
+ 			"$(MRUBY_LIB_DIR)/Balancer.rb "
+ 			"$(MRUBY_LIB_DIR)/SharedMemory.rb "
+ 			"$(APP_RB2)";
