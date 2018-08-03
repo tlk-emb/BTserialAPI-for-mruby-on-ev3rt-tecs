@@ -1,0 +1,9 @@
+signature sBTserial {
+	int bread(void);
+	int bsend([in]const char *str);
+};
+
+[singleton]
+celltype tBTserial{
+	entry sBTserial eBTserial;
+};
